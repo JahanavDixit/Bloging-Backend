@@ -50,7 +50,7 @@ app.post('/api',(req,res)=>{
 
 app.get('/api', async (req,res)=>{
     try{
-    const blogs= await Blogs.find({})
+    const blogs= await Blog.find({})
 	.sort({ date: -1 })
 	.lean();
     const blogsMap = {};
