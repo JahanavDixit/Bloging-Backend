@@ -3,8 +3,11 @@ const path = require('path');
 const dotenv = require('dotenv');
 dotenv.config();
 const cors = require('cors');
-
+const NodeCache = require('node-cache');
 const app = express();
+const compression = require('compression');
+
+app.use(compression());
 
 app.use(cors({
     origin: '*'
@@ -12,7 +15,7 @@ app.use(cors({
 
 const key = process.env.KEY;
 const PORT = process.env.PORT || 3001;
-
+const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const mongoose = require('mongoose');
 
 const mngdb = require('mongodb');
@@ -29,6 +32,8 @@ const newBlog = new Schema({
     date : String
 });
 
+newBlog.index({_id: 1});
+
 let Blog = mongoose.model('Blog',newBlog);
 app.use(express.static(path.resolve(__dirname, '../myblog/build')));
 app.use(express.json());
@@ -39,21 +44,25 @@ app.post('/api',(req,res)=>{
     let rtime = req.body.time
     let rdate = req.body.date
     let curr = new Blog({blog:rblog,sub:rsub,time:rtime,date:rdate})
+    cache.del('/api');
     curr.save(); 
 });
 
-app.get('/api',(req,res)=>{
-
-    Blog.find({}, function(err,blogs){
-
-        var blogsMap = {};
-
-        blogs.forEach(function(blog){
+app.get('/api', async (req,res)=>{
+    try{
+    const blogs= await Blogs.find({})
+	.sort({ date: -1 })
+	.lean();
+    const blogsMap = {};
+    blogs.forEach(function(blog){
             blogsMap[blog._id] = blog;
         });
-
-        res.send(blogsMap);
-    });
+    cache.set('/api', blogsMap);
+    res.send(blogsMap);
+    } catch(err) {
+    console.error(err);
+    res.status(500).send("Internal Server Error");
+    }    
 });
 
 app.listen(PORT,()=>{
