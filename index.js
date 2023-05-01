@@ -7,7 +7,7 @@ const NodeCache = require('node-cache');
 const app = express();
 const compression = require('compression');
 
-app.use(compression());
+app.use(compression()); //compression library
 
 app.use(cors({
     origin: '*'
